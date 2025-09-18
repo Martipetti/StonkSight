@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import pandas as pd
 
 from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 from sklearn.preprocessing import MinMaxScaler
@@ -9,6 +10,7 @@ from keras.src.layers import LSTM, Dense
 
 class Lstm:
     def __init__(self, sequence_length=30, epochs=10, batch_size=32):
+        self.index = None
         self.sequence_length = sequence_length
         self.epochs = epochs
         self.batch_size = batch_size
@@ -16,14 +18,13 @@ class Lstm:
         self.model = None
 
     def preprocess(self, data):
+        self.index = pd.DatetimeIndex(data.index)
         scaled_data = self.scaler.fit_transform(data)
         feature, target = self.__create_sequence(scaled_data, seq_length=self.sequence_length)
         return np.array(feature), np.array(target)
 
     def build_train_predict(self, feature, target):
         x_feature, x_test, y_feature, y_test = train_test_split(feature, target, test_size=0.2, shuffle=False)
-        print(x_feature)
-        print(y_feature)
         input_shape = (feature[0].shape[0], feature[0].shape[1])
         model = self.__build_model(input_shape)
         model.fit(x_feature, y_feature, epochs=self.epochs, batch_size=self.batch_size, verbose=1)
@@ -31,7 +32,8 @@ class Lstm:
         predictions = self.scaler.inverse_transform(predictions)
         y_test = self.scaler.inverse_transform(y_test)
         stats = self.__stats(y_test, predictions)
-        return predictions, stats
+        pred_df = pd.DataFrame(predictions, columns=['Predictions'], index=self.index[-len(predictions):])
+        return pred_df, stats
 
     @staticmethod
     def __build_model(input_shape):
