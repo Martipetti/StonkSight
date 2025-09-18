@@ -1,5 +1,6 @@
 import streamlit as st
 import yfinance as yf
+from models.lstm import Lstm
 
 st.set_page_config(
     page_title='Stonk Sight'
@@ -7,6 +8,9 @@ st.set_page_config(
 
 if "data_frame" not in st.session_state:
     st.session_state.data_frame = None
+
+if "my_instance" not in st.session_state:
+    st.session_state.my_instance = Lstm()
 
 def search(stock):
     if not stock:
@@ -34,4 +38,17 @@ with col2:
     st.button("🔍", on_click=search, args=(stock,))
 
 if st.session_state.data_frame is not None:
-    st.line_chart(st.session_state.data_frame)
+    data = st.session_state.data_frame
+    if data.empty:
+        st.warning("No data found for the given stock symbol.")
+    else:
+        st.line_chart(data=data, use_container_width=True)
+        if st.button('Predict', on_click=lambda: None):
+            with st.spinner('Predicting...'):
+                features, target = st.session_state.my_instance.preprocess(data)
+                predictions, stats = st.session_state.my_instance.build_train_predict(features, target)
+                st.subheader("Prediction Results")
+                st.write("Predictions:")
+                st.write(predictions)
+                st.write("Statistics:")
+                st.json(stats)
